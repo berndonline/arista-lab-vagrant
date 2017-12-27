@@ -1,0 +1,411 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+
+  config.vm.provider :libvirt do |domain|
+    domain.management_network_address = "10.255.1.0/24"
+    domain.management_network_name = "wbr1"
+    domain.nic_adapter_count = 130
+  end
+
+  config.vm.provision "ansible" do |ansible|
+    ansible.playbook = "./helper_scripts/empty_playbook.yml"
+    ansible.groups = {
+      "spine" => ["spine-1","spine-2",],
+      "edge" => ["edge-2","edge-1",],
+      "leaf" => ["leaf-1","leaf-3","leaf-2","leaf-5","leaf-4","leaf-6",],
+      "network:children" => ["spine","edge","leaf",]
+    }
+  end
+
+  ##### DEFINE VM for spine-1 #####
+  config.vm.define "spine-1" do |device|
+    device.vm.box = "arista/veos"
+    device.vm.guest = :freebsd
+
+    device.vm.provider :libvirt do |v|
+      v.memory = 2048
+      v.cpu_mode = "custom"
+      v.cpu_model = "Hypervisor Default"
+      v.driver = "kvm"
+      v.machine_type = "pc-i440fx-1.5"
+      v.emulator_path = "/usr/bin/qemu-system-x86_64"
+      v.disk_bus = 'ide'
+      v.cpus = 2
+      v.storage :file, :device => :cdrom, dev: "hdc", :path => "/home/berndonline/arista-images/libvirt/vEOS-4.18.1F-disk2.iso"
+      v.boot 'cdrom'
+      v.boot 'hd'
+    end
+    #   see note here: https://github.com/pradels/vagrant-libvirt#synced-folders
+    device.vm.synced_folder ".", "/vagrant", disabled: true
+
+   # NETWORK INTERFACES
+      # link for swp1 --> leaf-1:swp51
+      device.vm.network "private_network",
+            :mac => "44:38:39:00:00:3c",
+            :libvirt__tunnel_type => 'udp',
+            :libvirt__tunnel_local_ip => '127.0.0.1',
+            :libvirt__tunnel_local_port => '9036',
+            :libvirt__tunnel_ip => '127.0.0.1',
+            :libvirt__tunnel_port => '8036',
+            :libvirt__iface_name => 'swp1',
+            auto_config: false
+      # link for swp2 --> leaf-2:swp51
+      device.vm.network "private_network",
+            :mac => "44:38:39:00:00:04",
+            :libvirt__tunnel_type => 'udp',
+            :libvirt__tunnel_local_ip => '127.0.0.1',
+            :libvirt__tunnel_local_port => '9002',
+            :libvirt__tunnel_ip => '127.0.0.1',
+            :libvirt__tunnel_port => '8002',
+            :libvirt__iface_name => 'swp2',
+            auto_config: false
+      # link for swp3 --> leaf-3:swp51
+      device.vm.network "private_network",
+            :mac => "44:38:39:00:00:31",
+            :libvirt__tunnel_type => 'udp',
+            :libvirt__tunnel_local_ip => '127.0.0.1',
+            :libvirt__tunnel_local_port => '9029',
+            :libvirt__tunnel_ip => '127.0.0.1',
+            :libvirt__tunnel_port => '8029',
+            :libvirt__iface_name => 'swp3',
+            auto_config: false
+      # link for swp4 --> leaf-4:swp51
+      device.vm.network "private_network",
+            :mac => "44:38:39:00:00:0b",
+            :libvirt__tunnel_type => 'udp',
+            :libvirt__tunnel_local_ip => '127.0.0.1',
+            :libvirt__tunnel_local_port => '9007',
+            :libvirt__tunnel_ip => '127.0.0.1',
+            :libvirt__tunnel_port => '8007',
+            :libvirt__iface_name => 'swp4',
+            auto_config: false
+      # link for swp5 --> leaf-5:swp51
+      device.vm.network "private_network",
+            :mac => "44:38:39:00:00:17",
+            :libvirt__tunnel_type => 'udp',
+            :libvirt__tunnel_local_ip => '127.0.0.1',
+            :libvirt__tunnel_local_port => '9014',
+            :libvirt__tunnel_ip => '127.0.0.1',
+            :libvirt__tunnel_port => '8014',
+            :libvirt__iface_name => 'swp5',
+            auto_config: false
+      # link for swp6 --> leaf-6:swp51
+      device.vm.network "private_network",
+            :mac => "44:38:39:00:00:2b",
+            :libvirt__tunnel_type => 'udp',
+            :libvirt__tunnel_local_ip => '127.0.0.1',
+            :libvirt__tunnel_local_port => '9026',
+            :libvirt__tunnel_ip => '127.0.0.1',
+            :libvirt__tunnel_port => '8026',
+            :libvirt__iface_name => 'swp6',
+            auto_config: false
+      # link for swp51 --> edge-1:swp51
+      device.vm.network "private_network",
+            :mac => "44:38:39:00:00:2f",
+            :libvirt__tunnel_type => 'udp',
+            :libvirt__tunnel_local_ip => '127.0.0.1',
+            :libvirt__tunnel_local_port => '9028',
+            :libvirt__tunnel_ip => '127.0.0.1',
+            :libvirt__tunnel_port => '8028',
+            :libvirt__iface_name => 'swp51',
+            auto_config: false
+      # link for swp52 --> edge-2:swp51
+      device.vm.network "private_network",
+            :mac => "44:38:39:00:00:0d",
+            :libvirt__tunnel_type => 'udp',
+            :libvirt__tunnel_local_ip => '127.0.0.1',
+            :libvirt__tunnel_local_port => '9008',
+            :libvirt__tunnel_ip => '127.0.0.1',
+            :libvirt__tunnel_port => '8008',
+            :libvirt__iface_name => 'swp52',
+            auto_config: false
+
+  config.vm.boot_timeout = 400
+  config.ssh.insert_key = false
+
+end
+
+  ##### DEFINE VM for spine-2 #####
+  config.vm.define "spine-2" do |device|
+    device.vm.box = "arista/veos2"
+    device.vm.guest = :freebsd
+
+    device.vm.provider :libvirt do |v|
+      v.memory = 2048
+      v.cpu_mode = "custom"
+      v.cpu_model = "Hypervisor Default"
+      v.driver = "kvm"
+      v.machine_type = "pc-i440fx-1.5"
+      v.emulator_path = "/usr/bin/qemu-system-x86_64"
+      v.disk_bus = 'ide'
+      v.cpus = 2
+      v.storage :file, :device => :cdrom, dev: "hdc", :path => "/home/berndonline/arista-images/libvirt/vEOS-4.18.1F-disk2-2.iso"
+      v.boot 'cdrom'
+      v.boot 'hd'
+    end
+    #   see note here: https://github.com/pradels/vagrant-libvirt#synced-folders
+    device.vm.synced_folder ".", "/vagrant", disabled: true
+
+      # link for swp1 --> leaf-1:swp52
+      device.vm.network "private_network",
+            :mac => "44:38:39:00:00:1d",
+            :libvirt__tunnel_type => 'udp',
+            :libvirt__tunnel_local_ip => '127.0.0.1',
+            :libvirt__tunnel_local_port => '9017',
+            :libvirt__tunnel_ip => '127.0.0.1',
+            :libvirt__tunnel_port => '8017',
+            :libvirt__iface_name => 'swp1',
+            auto_config: false
+      # link for swp2 --> leaf-2:swp52
+      device.vm.network "private_network",
+            :mac => "44:38:39:00:00:14",
+            :libvirt__tunnel_type => 'udp',
+            :libvirt__tunnel_local_ip => '127.0.0.1',
+            :libvirt__tunnel_local_port => '9012',
+            :libvirt__tunnel_ip => '127.0.0.1',
+            :libvirt__tunnel_port => '8012',
+            :libvirt__iface_name => 'swp2',
+            auto_config: false
+      # link for swp3 --> leaf-3:swp52
+      device.vm.network "private_network",
+            :mac => "44:38:39:00:00:2d",
+            :libvirt__tunnel_type => 'udp',
+            :libvirt__tunnel_local_ip => '127.0.0.1',
+            :libvirt__tunnel_local_port => '9027',
+            :libvirt__tunnel_ip => '127.0.0.1',
+            :libvirt__tunnel_port => '8027',
+            :libvirt__iface_name => 'swp3',
+            auto_config: false
+      # link for swp4 --> leaf-4:swp52
+      device.vm.network "private_network",
+            :mac => "44:38:39:00:00:39",
+            :libvirt__tunnel_type => 'udp',
+            :libvirt__tunnel_local_ip => '127.0.0.1',
+            :libvirt__tunnel_local_port => '9034',
+            :libvirt__tunnel_ip => '127.0.0.1',
+            :libvirt__tunnel_port => '8034',
+            :libvirt__iface_name => 'swp4',
+            auto_config: false
+      # link for swp5 --> leaf-5:swp52
+      device.vm.network "private_network",
+            :mac => "44:38:39:00:00:33",
+            :libvirt__tunnel_type => 'udp',
+            :libvirt__tunnel_local_ip => '127.0.0.1',
+            :libvirt__tunnel_local_port => '9030',
+            :libvirt__tunnel_ip => '127.0.0.1',
+            :libvirt__tunnel_port => '8030',
+            :libvirt__iface_name => 'swp5',
+            auto_config: false
+      # link for swp6 --> leaf-6:swp52
+      device.vm.network "private_network",
+            :mac => "44:38:39:00:00:26",
+            :libvirt__tunnel_type => 'udp',
+            :libvirt__tunnel_local_ip => '127.0.0.1',
+            :libvirt__tunnel_local_port => '9023',
+            :libvirt__tunnel_ip => '127.0.0.1',
+            :libvirt__tunnel_port => '8023',
+            :libvirt__iface_name => 'swp6',
+            auto_config: false
+      # link for swp51 --> edge-1:swp52
+      device.vm.network "private_network",
+            :mac => "44:38:39:00:00:28",
+            :libvirt__tunnel_type => 'udp',
+            :libvirt__tunnel_local_ip => '127.0.0.1',
+            :libvirt__tunnel_local_port => '9024',
+            :libvirt__tunnel_ip => '127.0.0.1',
+            :libvirt__tunnel_port => '8024',
+            :libvirt__iface_name => 'swp51',
+            auto_config: false
+      # link for swp52 --> edge-2:swp52
+      device.vm.network "private_network",
+            :mac => "44:38:39:00:00:12",
+            :libvirt__tunnel_type => 'udp',
+            :libvirt__tunnel_local_ip => '127.0.0.1',
+            :libvirt__tunnel_local_port => '9011',
+            :libvirt__tunnel_ip => '127.0.0.1',
+            :libvirt__tunnel_port => '8011',
+            :libvirt__iface_name => 'swp52',
+            auto_config: false
+
+  config.vm.boot_timeout = 400
+  config.ssh.insert_key = false
+
+end
+
+  ##### DEFINE VM for leaf-1 #####
+  config.vm.define "leaf-1" do |device|
+    device.vm.box = "arista/veos3"
+    device.vm.guest = :freebsd
+
+    device.vm.provider :libvirt do |v|
+      v.memory = 2048
+      v.cpu_mode = "custom"
+      v.cpu_model = "Hypervisor Default"
+      v.driver = "kvm"
+      v.machine_type = "pc-i440fx-1.5"
+      v.emulator_path = "/usr/bin/qemu-system-x86_64"
+      v.disk_bus = 'ide'
+      v.cpus = 2
+      v.storage :file, :device => :cdrom, dev: "hdc", :path => "/home/berndonline/arista-images/libvirt/vEOS-4.18.1F-disk2-3.iso"
+      v.boot 'cdrom'
+      v.boot 'hd'
+    end
+    #   see note here: https://github.com/pradels/vagrant-libvirt#synced-folders
+    device.vm.synced_folder ".", "/vagrant", disabled: true
+
+      # link for swp1 --> server-1:eth1
+      device.vm.network "private_network",
+            :mac => "44:38:39:00:00:29",
+            :libvirt__tunnel_type => 'udp',
+            :libvirt__tunnel_local_ip => '127.0.0.1',
+            :libvirt__tunnel_local_port => '9025',
+            :libvirt__tunnel_ip => '127.0.0.1',
+            :libvirt__tunnel_port => '8025',
+            :libvirt__iface_name => 'swp1',
+            auto_config: false
+      # link for swp2 --> server-2:eth1
+      device.vm.network "private_network",
+            :mac => "44:38:39:00:00:34",
+            :libvirt__tunnel_type => 'udp',
+            :libvirt__tunnel_local_ip => '127.0.0.1',
+            :libvirt__tunnel_local_port => '9031',
+            :libvirt__tunnel_ip => '127.0.0.1',
+            :libvirt__tunnel_port => '8031',
+            :libvirt__iface_name => 'swp2',
+            auto_config: false
+      # link for swp51 --> spine-1:swp1
+      device.vm.network "private_network",
+            :mac => "44:38:39:00:00:3b",
+            :libvirt__tunnel_type => 'udp',
+            :libvirt__tunnel_local_ip => '127.0.0.1',
+            :libvirt__tunnel_local_port => '8036',
+            :libvirt__tunnel_ip => '127.0.0.1',
+            :libvirt__tunnel_port => '9036',
+            :libvirt__iface_name => 'swp51',
+            auto_config: false
+      # link for swp52 --> spine-2:swp1
+      device.vm.network "private_network",
+            :mac => "44:38:39:00:00:1c",
+            :libvirt__tunnel_type => 'udp',
+            :libvirt__tunnel_local_ip => '127.0.0.1',
+            :libvirt__tunnel_local_port => '8017',
+            :libvirt__tunnel_ip => '127.0.0.1',
+            :libvirt__tunnel_port => '9017',
+            :libvirt__iface_name => 'swp52',
+            auto_config: false
+      # link for swp53 --> leaf-2:swp53
+      device.vm.network "private_network",
+            :mac => "44:38:39:00:00:01",
+            :libvirt__tunnel_type => 'udp',
+            :libvirt__tunnel_local_ip => '127.0.0.1',
+            :libvirt__tunnel_local_port => '8001',
+            :libvirt__tunnel_ip => '127.0.0.1',
+            :libvirt__tunnel_port => '9001',
+            :libvirt__iface_name => 'swp53',
+            auto_config: false
+      # link for swp54 --> leaf-2:swp54
+      device.vm.network "private_network",
+            :mac => "44:38:39:00:00:05",
+            :libvirt__tunnel_type => 'udp',
+            :libvirt__tunnel_local_ip => '127.0.0.1',
+            :libvirt__tunnel_local_port => '8003',
+            :libvirt__tunnel_ip => '127.0.0.1',
+            :libvirt__tunnel_port => '9003',
+            :libvirt__iface_name => 'swp54',
+            auto_config: false
+
+  config.vm.boot_timeout = 400
+  config.ssh.insert_key = false
+
+end
+
+  ##### DEFINE VM for leaf-2 #####
+  config.vm.define "leaf-2" do |device|
+    device.vm.box = "arista/veos4"
+    device.vm.guest = :freebsd
+
+    device.vm.provider :libvirt do |v|
+      v.memory = 2048
+      v.cpu_mode = "custom"
+      v.cpu_model = "Hypervisor Default"
+      v.driver = "kvm"
+      v.machine_type = "pc-i440fx-1.5"
+      v.emulator_path = "/usr/bin/qemu-system-x86_64"
+      v.disk_bus = 'ide'
+      v.cpus = 2
+      v.storage :file, :device => :cdrom, dev: "hdc", :path => "/home/berndonline/arista-images/libvirt/vEOS-4.18.1F-disk2-4.iso"
+      v.boot 'cdrom'
+      v.boot 'hd'
+    end
+    #   see note here: https://github.com/pradels/vagrant-libvirt#synced-folders
+    device.vm.synced_folder ".", "/vagrant", disabled: true
+
+      # link for swp1 --> server-1:eth2
+      device.vm.network "private_network",
+            :mac => "44:38:39:00:00:09",
+            :libvirt__tunnel_type => 'udp',
+            :libvirt__tunnel_local_ip => '127.0.0.1',
+            :libvirt__tunnel_local_port => '9006',
+            :libvirt__tunnel_ip => '127.0.0.1',
+            :libvirt__tunnel_port => '8006',
+            :libvirt__iface_name => 'swp1',
+            auto_config: false
+      # link for swp2 --> server-2:eth2
+      device.vm.network "private_network",
+            :mac => "44:38:39:00:00:3a",
+            :libvirt__tunnel_type => 'udp',
+            :libvirt__tunnel_local_ip => '127.0.0.1',
+            :libvirt__tunnel_local_port => '9035',
+            :libvirt__tunnel_ip => '127.0.0.1',
+            :libvirt__tunnel_port => '8035',
+            :libvirt__iface_name => 'swp2',
+            auto_config: false
+      # link for swp51 --> spine-1:swp2
+      device.vm.network "private_network",
+            :mac => "44:38:39:00:00:03",
+            :libvirt__tunnel_type => 'udp',
+            :libvirt__tunnel_local_ip => '127.0.0.1',
+            :libvirt__tunnel_local_port => '8002',
+            :libvirt__tunnel_ip => '127.0.0.1',
+            :libvirt__tunnel_port => '9002',
+            :libvirt__iface_name => 'swp51',
+            auto_config: false
+      # link for swp52 --> spine-2:swp2
+      device.vm.network "private_network",
+            :mac => "44:38:39:00:00:13",
+            :libvirt__tunnel_type => 'udp',
+            :libvirt__tunnel_local_ip => '127.0.0.1',
+            :libvirt__tunnel_local_port => '8012',
+            :libvirt__tunnel_ip => '127.0.0.1',
+            :libvirt__tunnel_port => '9012',
+            :libvirt__iface_name => 'swp52',
+            auto_config: false
+      # link for swp53 --> leaf-1:swp53
+      device.vm.network "private_network",
+            :mac => "44:38:39:00:00:02",
+            :libvirt__tunnel_type => 'udp',
+            :libvirt__tunnel_local_ip => '127.0.0.1',
+            :libvirt__tunnel_local_port => '9001',
+            :libvirt__tunnel_ip => '127.0.0.1',
+            :libvirt__tunnel_port => '8001',
+            :libvirt__iface_name => 'swp53',
+            auto_config: false
+      # link for swp54 --> leaf-1:swp54
+      device.vm.network "private_network",
+            :mac => "44:38:39:00:00:06",
+            :libvirt__tunnel_type => 'udp',
+            :libvirt__tunnel_local_ip => '127.0.0.1',
+            :libvirt__tunnel_local_port => '9003',
+            :libvirt__tunnel_ip => '127.0.0.1',
+            :libvirt__tunnel_port => '8003',
+            :libvirt__iface_name => 'swp54',
+            auto_config: false
+
+  config.vm.boot_timeout = 400
+  config.ssh.insert_key = false
+
+end
+
+end
